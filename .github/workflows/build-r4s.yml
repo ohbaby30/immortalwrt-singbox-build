@@ -1,0 +1,108 @@
+name: Build ImmortalWrt R4S SingBox
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "ImmortalWrt branch"
+        required: true
+        default: "master"
+      config:
+        description: "Config file in this repo"
+        required: true
+        default: "configs/r4s.config"
+  schedule:
+    # GitHub cron uses UTC. This runs every Sunday at 02:00 Asia/Shanghai.
+    - cron: "0 18 * * 6"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout build config
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: false
+
+      - name: Install build dependencies
+        run: |
+          sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+
+      - name: Clone ImmortalWrt
+        run: |
+          git clone -b "${{ inputs.branch || 'master' }}" --single-branch --filter=blob:none https://github.com/immortalwrt/immortalwrt immortalwrt
+
+      - name: Add custom feeds
+        working-directory: immortalwrt
+        run: |
+          {
+            echo "src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git;main"
+            echo "src-git passwall2 https://github.com/Openwrt-Passwall/openwrt-passwall2.git;main"
+          } >> feeds.conf.default
+
+      - name: Update feeds
+        working-directory: immortalwrt
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load custom files
+        run: |
+          if [ -d files-r4s ]; then
+            mkdir -p immortalwrt/files
+            cp -a files-r4s/. immortalwrt/files/
+          fi
+
+      - name: Load config
+        run: |
+          cp "${{ inputs.config || 'configs/r4s.config' }}" immortalwrt/.config
+
+      - name: Make defconfig
+        working-directory: immortalwrt
+        run: |
+          make defconfig
+
+      - name: Download sources
+        working-directory: immortalwrt
+        run: |
+          make download -j"$(nproc)"
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile firmware
+        working-directory: immortalwrt
+        run: |
+          make -j"$(nproc)" V=s
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir -p artifact
+          if [ -d immortalwrt/bin/targets ]; then
+            find immortalwrt/bin/targets -type f \
+              \( -name "*.bin" -o -name "*.img" -o -name "*.gz" -o -name "*.manifest" -o -name "*.buildinfo" -o -name "*.json" \) \
+              -exec cp -v {} artifact/ \;
+          fi
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: immortalwrt-r4s-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
+          path: artifact/
+          if-no-files-found: warn
+          retention-days: 7
