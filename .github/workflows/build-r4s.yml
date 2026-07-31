@@ -16,7 +16,7 @@ on:
     - cron: "0 18 * * 6"
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
@@ -88,21 +88,62 @@ jobs:
         run: |
           make -j"$(nproc)" V=s
 
-      - name: Collect artifacts
-        if: always()
+      - name: Collect firmware
         run: |
           mkdir -p artifact
-          if [ -d immortalwrt/bin/targets ]; then
-            find immortalwrt/bin/targets -type f \
-              \( -name "*.bin" -o -name "*.img" -o -name "*.gz" -o -name "*.manifest" -o -name "*.buildinfo" -o -name "*.json" \) \
-              -exec cp -v {} artifact/ \;
-          fi
+          cp -v immortalwrt/bin/targets/rockchip/armv8/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz artifact/
+
+      - name: Upload firmware to release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: immortalwrt-r4s-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
+          name: ImmortalWrt R4S SingBox ${{ inputs.branch || 'master' }} build ${{ github.run_number }}
+          files: artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      - name: Delete old R4S SingBox releases
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            const currentTag = 'immortalwrt-r4s-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}';
+            const prefix = 'immortalwrt-r4s-singbox-';
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+
+            for (const release of releases) {
+              if (!release.tag_name.startsWith(prefix) || release.tag_name === currentTag) {
+                continue;
+              }
+
+              core.info(`Deleting old release ${release.tag_name}`);
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+              });
+
+              try {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `tags/${release.tag_name}`,
+                });
+              } catch (error) {
+                core.warning(`Could not delete tag ${release.tag_name}: ${error.message}`);
+              }
+            }
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: immortalwrt-r4s-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
-          path: artifact/
+          path: artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
           if-no-files-found: warn
           retention-days: 7
