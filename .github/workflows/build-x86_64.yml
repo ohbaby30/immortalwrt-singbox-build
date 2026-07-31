@@ -11,12 +11,13 @@ on:
         description: "Config file in this repo"
         required: true
         default: "configs/x86_64.config"
-
   schedule:
+    # GitHub cron uses UTC. This runs every Sunday at 02:00 Asia/Shanghai.
     - cron: "0 18 * * 6"
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build:
@@ -72,7 +73,8 @@ jobs:
 
       - name: Make defconfig
         working-directory: immortalwrt
-        run: make defconfig
+        run: |
+          make defconfig
 
       - name: Download sources
         working-directory: immortalwrt
@@ -83,27 +85,65 @@ jobs:
 
       - name: Compile firmware
         working-directory: immortalwrt
-        run: make -j"$(nproc)" V=s
+        run: |
+          make -j"$(nproc)" V=s
 
-      - name: Collect artifacts
+      - name: Collect firmware
         run: |
           mkdir -p artifact
-          find immortalwrt/bin/targets -type f \
-            \( -name "*.bin" -o -name "*.img" -o -name "*.gz" -o -name "*.manifest" -o -name "*.buildinfo" -o -name "*.json" \) \
-            -exec cp -v {} artifact/ \;
+          cp -v immortalwrt/bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz artifact/
 
-      - name: Upload firmware artifact
+      - name: Upload firmware to release
+        uses: softprops/action-gh-release@v2
+        if: success()
+        with:
+          tag_name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
+          name: ImmortalWrt x86_64 SingBox ${{ inputs.branch || 'master' }} build ${{ github.run_number }}
+          files: artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      - name: Delete old x86_64 SingBox releases
+        uses: actions/github-script@v7
+        if: success()
+        with:
+          script: |
+            const currentTag = 'immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}';
+            const prefix = 'immortalwrt-x86_64-singbox-';
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+
+            for (const release of releases) {
+              if (!release.tag_name.startsWith(prefix) || release.tag_name === currentTag) {
+                continue;
+              }
+
+              core.info(`Deleting old release ${release.tag_name}`);
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+              });
+
+              try {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `tags/${release.tag_name}`,
+                });
+              } catch (error) {
+                core.warning(`Could not delete tag ${release.tag_name}: ${error.message}`);
+              }
+            }
+
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
-          path: artifact/
+          path: artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          if-no-files-found: warn
           retention-days: 7
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: immortalwrt-x86_64-${{ inputs.branch || 'master' }}-${{ github.run_number }}
-          name: ImmortalWrt x86_64 SingBox ${{ inputs.branch || 'master' }} #${{ github.run_number }}
-          generate_release_notes: true
-          files: artifact/*
-          fail_on_unmatched_files: true
