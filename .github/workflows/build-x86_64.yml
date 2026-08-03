@@ -88,10 +88,16 @@ jobs:
         run: |
           make -j"$(nproc)" V=s
 
-      - name: Collect firmware
+      - name: Collect firmware and Passwall2 apk
         run: |
           mkdir -p artifact
           cp -v immortalwrt/bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz artifact/
+          PASSWALL2_APK="$(find immortalwrt/bin/packages immortalwrt/bin/targets -type f -name 'luci-app-passwall2*.apk' | head -n 1)"
+          if [ -z "$PASSWALL2_APK" ]; then
+            echo "luci-app-passwall2 apk not found"
+            exit 1
+          fi
+          cp -v "$PASSWALL2_APK" artifact/
 
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v2
@@ -99,7 +105,9 @@ jobs:
         with:
           tag_name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
           name: ImmortalWrt x86_64 SingBox ${{ inputs.branch || 'master' }} build ${{ github.run_number }}
-          files: artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          files: |
+            artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+            artifact/luci-app-passwall2*.apk
           fail_on_unmatched_files: true
           make_latest: true
 
@@ -144,6 +152,8 @@ jobs:
         if: always()
         with:
           name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
-          path: artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+          path: |
+            artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
+            artifact/luci-app-passwall2*.apk
           if-no-files-found: warn
           retention-days: 7
