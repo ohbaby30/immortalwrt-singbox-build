@@ -88,16 +88,15 @@ jobs:
         run: |
           make -j"$(nproc)" V=s
 
-      - name: Collect firmware and Passwall2 apk
+      - name: Collect firmware and Passwall2 apks
         run: |
           mkdir -p artifact
           cp -v immortalwrt/bin/targets/rockchip/armv8/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz artifact/
-          PASSWALL2_APK="$(find immortalwrt/bin/packages immortalwrt/bin/targets -type f -name 'luci-app-passwall2*.apk' | head -n 1)"
-          if [ -z "$PASSWALL2_APK" ]; then
-            echo "luci-app-passwall2 apk not found"
+          find immortalwrt/bin/packages immortalwrt/bin/targets -type f -name '*passwall2*.apk' -exec cp -v {} artifact/ \;
+          if ! ls artifact/*passwall2*.apk >/dev/null 2>&1; then
+            echo "passwall2 apk files not found"
             exit 1
           fi
-          cp -v "$PASSWALL2_APK" artifact/
 
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v2
@@ -107,7 +106,7 @@ jobs:
           name: ImmortalWrt R4S SingBox ${{ inputs.branch || 'master' }} build ${{ github.run_number }}
           files: |
             artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
-            artifact/luci-app-passwall2*.apk
+            artifact/*passwall2*.apk
           fail_on_unmatched_files: true
           make_latest: true
 
@@ -154,6 +153,6 @@ jobs:
           name: immortalwrt-r4s-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
           path: |
             artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
-            artifact/luci-app-passwall2*.apk
+            artifact/*passwall2*.apk
           if-no-files-found: warn
           retention-days: 7
