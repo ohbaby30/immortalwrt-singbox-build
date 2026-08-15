@@ -16,7 +16,7 @@ This repository builds ImmortalWrt `master` firmware for both x86_64 and Friendl
   - First boot LAN IP: `192.168.50.254/24`
   - Firmware: `immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz`
 
-Both targets keep the same package choices as the Xray build, while Passwall2 includes both SingBox and Xray basic cores.
+Both targets keep the same package choices as the Xray build, except Passwall2 uses only the SingBox basic core.
 
 ## Usage
 

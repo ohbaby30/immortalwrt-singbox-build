@@ -76,6 +76,20 @@ jobs:
         run: |
           make defconfig
 
+      - name: Validate requested packages
+        working-directory: immortalwrt
+        env:
+          REQUESTED_CONFIG: ../${{ inputs.config || 'configs/r4s.config' }}
+        run: |
+          missing=0
+          while IFS= read -r symbol; do
+            if ! grep -qxF "$symbol" .config; then
+              echo "::error::Requested config symbol was dropped: $symbol"
+              missing=1
+            fi
+          done < <(grep -E '^CONFIG_PACKAGE_[-A-Za-z0-9_+.]+=[ym]$' "$REQUESTED_CONFIG")
+          exit "$missing"
+
       - name: Download sources
         working-directory: immortalwrt
         run: |
