@@ -8,6 +8,9 @@ uci set system.@system[0].timezone='CST-8'
 uci set system.@system[0].hostname='OWrt'
 uci commit system
 
+uci set dhcp.lan.enabled='0'
+uci commit dhcp
+
 sed -i 's#^root:[^:]*:#root::#' /etc/shadow
 
 exit 0

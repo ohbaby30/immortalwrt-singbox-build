@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
           tool-cache: true
           android: true
@@ -37,6 +37,14 @@ jobs:
           haskell: true
           large-packages: true
           swap-storage: false
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ github.job }}-${{ inputs.branch || 'master' }}-${{ github.run_number }}
+          restore-keys: |
+            ccache-${{ github.job }}-${{ inputs.branch || 'master' }}-
 
       - name: Install build dependencies
         run: |
@@ -93,12 +101,25 @@ jobs:
       - name: Download sources
         working-directory: immortalwrt
         run: |
-          make download -j"$(nproc)"
+          for i in 1 2 3; do
+            make download -j"$(nproc)" && break || echo "Download attempt $i failed, retrying..."
+          done
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
+      - name: Setup ccache
+        working-directory: immortalwrt
+        run: |
+          sudo apt-get install -y ccache
+          mkdir -p ~/.ccache
+          ccache -M 2G
+          echo "CCACHE_DIR=~/.ccache" >> "$GITHUB_ENV"
+
       - name: Compile firmware
         working-directory: immortalwrt
+        env:
+          USE_CCACHE: "1"
+          CCACHE_DIR: "~/.ccache"
         run: |
           make -j"$(nproc)" V=s
 
@@ -111,6 +132,7 @@ jobs:
             echo "passwall2 apk files not found"
             exit 1
           fi
+          cd artifact && sha256sum * > SHA256SUMS && cd ..
 
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v2
@@ -121,6 +143,7 @@ jobs:
           files: |
             artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
             artifact/*passwall2*.apk
+            artifact/SHA256SUMS
           fail_on_unmatched_files: true
           make_latest: true
 
@@ -168,5 +191,6 @@ jobs:
           path: |
             artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
             artifact/*passwall2*.apk
+            artifact/SHA256SUMS
           if-no-files-found: warn
           retention-days: 7

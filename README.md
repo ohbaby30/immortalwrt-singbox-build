@@ -1,5 +1,8 @@
 # ImmortalWrt SingBox GitHub Actions Builder
 
+![Build R4S](https://github.com/ohbaby30/immortalwrt-singbox-build/actions/workflows/build-r4s.yml/badge.svg)
+![Build x86_64](https://github.com/ohbaby30/immortalwrt-singbox-build/actions/workflows/build-x86_64.yml/badge.svg)
+
 This repository builds ImmortalWrt `master` firmware for both x86_64 and FriendlyARM NanoPi R4S with GitHub Actions.
 
 ## Targets
