@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout build config
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
@@ -102,7 +104,14 @@ jobs:
         working-directory: immortalwrt
         run: |
           for i in 1 2 3; do
-            make download -j"$(nproc)" && break || echo "Download attempt $i failed, retrying..."
+            if make download -j"$(nproc)"; then
+              break
+            fi
+            if [ "$i" -eq 3 ]; then
+              echo "::error::Download failed after 3 attempts"
+              exit 1
+            fi
+            echo "Download attempt $i failed, retrying..."
           done
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
