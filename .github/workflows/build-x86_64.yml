@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout build config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -41,7 +41,7 @@ jobs:
           swap-storage: false
 
       - name: Restore ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.ccache
           key: ccache-${{ github.job }}-${{ inputs.branch || 'master' }}-${{ github.run_number }}
@@ -144,7 +144,7 @@ jobs:
           cd artifact && sha256sum * > SHA256SUMS && cd ..
 
       - name: Upload firmware to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: success()
         with:
           tag_name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
@@ -157,7 +157,7 @@ jobs:
           make_latest: true
 
       - name: Delete old x86_64 SingBox releases
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: success()
         with:
           script: |
@@ -193,7 +193,7 @@ jobs:
             }
 
       - name: Upload firmware
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
