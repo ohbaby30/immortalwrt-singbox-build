@@ -30,6 +30,39 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Compute Shanghai release suffix
+        id: release-suffix
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const workflowId = 'build-x86_64.yml';
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowId,
+              per_page: 100,
+            });
+            const currentRun = data.workflow_runs.find((run) => run.id === context.runId);
+            if (!currentRun) {
+              throw new Error(`Current workflow run ${context.runId} was not found.`);
+            }
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'Asia/Shanghai',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            });
+            const shanghaiDate = (value) => formatter.format(new Date(value)).replaceAll('-', '');
+            const buildDate = shanghaiDate(currentRun.created_at);
+            const dailyRuns = data.workflow_runs
+              .filter((run) => shanghaiDate(run.created_at) === buildDate)
+              .sort((left, right) => left.run_number - right.run_number);
+            const ordinal = dailyRuns.findIndex((run) => run.id === context.runId) + 1;
+            if (ordinal < 1) {
+              throw new Error(`Current workflow run ${context.runId} has no daily ordinal.`);
+            }
+            core.setOutput('release_suffix', ordinal === 1 ? buildDate : `${buildDate}-${ordinal}`);
+
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
         with:
@@ -147,8 +180,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         if: success()
         with:
-          tag_name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
-          name: ImmortalWrt x86_64 SingBox ${{ inputs.branch || 'master' }} build ${{ github.run_number }}
+          tag_name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ steps.release-suffix.outputs.release_suffix }}
+          name: ImmortalWrt x86_64 SingBox ${{ inputs.branch || 'master' }} build ${{ steps.release-suffix.outputs.release_suffix }}
           files: |
             artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
             artifact/*passwall2*.apk
@@ -196,7 +229,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}
+          name: immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ steps.release-suffix.outputs.release_suffix }}
           path: |
             artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
             artifact/*passwall2*.apk
