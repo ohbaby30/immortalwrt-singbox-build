@@ -194,7 +194,7 @@ jobs:
         if: success()
         with:
           script: |
-            const currentTag = 'immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ github.run_number }}';
+            const currentTag = 'immortalwrt-x86_64-singbox-${{ inputs.branch || 'master' }}-${{ steps.release-suffix.outputs.release_suffix }}';
             const prefix = 'immortalwrt-x86_64-singbox-';
             const releases = await github.paginate(github.rest.repos.listReleases, {
               owner: context.repo.owner,
