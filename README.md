@@ -41,3 +41,7 @@ passwd root
 - 对应平台的固件镜像（`.img.gz`）
 - Passwall2 的 `.apk` 安装包
 - `SHA256SUMS` 校验和文件，用于验证下载完整性
+
+本项目源自于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 和 [PassWall2](https://github.com/Openwrt-Passwall/openwrt-passwall2)。
+
+感谢 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 和 [PassWall2](https://github.com/Openwrt-Passwall/openwrt-passwall2) 等项目以及所有插件作者对开源路由所作的贡献。
