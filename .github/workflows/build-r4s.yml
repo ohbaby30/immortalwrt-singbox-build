@@ -187,7 +187,7 @@ jobs:
             --build immortalwrt \
             --metadata passwall2-build.json \
             --destination artifact
-          cd artifact && sha256sum * > SHA256SUMS && cd ..
+          cd artifact && sha256sum *.img.gz > SHA256SUMS && cd ..
 
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v3
@@ -197,7 +197,6 @@ jobs:
           name: ImmortalWrt R4S SingBox ${{ inputs.branch || 'master' }} build ${{ steps.release-suffix.outputs.release_suffix }}
           files: |
             artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
-            artifact/*passwall2*.apk
             artifact/SHA256SUMS
           fail_on_unmatched_files: true
           make_latest: true
@@ -245,8 +244,6 @@ jobs:
           name: immortalwrt-r4s-singbox-${{ inputs.branch || 'master' }}-${{ steps.release-suffix.outputs.release_suffix }}
           path: |
             artifact/immortalwrt-rockchip-armv8-friendlyarm_nanopi-r4s-squashfs-sysupgrade.img.gz
-            artifact/*passwall2*.apk
             artifact/SHA256SUMS
-            artifact/passwall2-build.json
           if-no-files-found: warn
           retention-days: 7

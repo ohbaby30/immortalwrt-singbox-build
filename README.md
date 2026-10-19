@@ -36,11 +36,10 @@ passwd root
 
 ## 构建产物
 
-每次构建会发布以下文件到 GitHub Releases：
+构建产物分开发布到 GitHub Releases：
 
-- 对应平台的固件镜像（`.img.gz`）
-- Passwall2 的 `.apk` 安装包
-- `SHA256SUMS` 校验和文件，用于验证下载完整性
+- 固件发布：对应平台的固件镜像（`.img.gz`）和 `SHA256SUMS` 校验文件。
+- 插件发布：一套通用 PassWall2 APK 和中文包，供手动安装及在线更新使用。
 
 ## PassWall2 在线更新
 
