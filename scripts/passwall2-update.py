@@ -26,20 +26,22 @@ def replace_once(text, pattern, replacement):
     return result
 
 
-def prepare(source, repository, created_at, run_id, attempt, upstream_commit, output):
+def prepare(source, repository, created_at, run_id, attempt, upstream_commit, output, build_number=1):
     # Version all three numeric components, including i18n, independently of upstream.
     # A rerun gets a new language version too, even when upstream PKG_VERSION is unchanged.
     started = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-    if started.tzinfo is None or run_id < 1 or attempt < 1:
+    if started.tzinfo is None or run_id < 1 or attempt < 1 or build_number < 1:
         raise ValueError("Expected a timezone-aware run timestamp and positive run identifiers")
     if not re.fullmatch(r"[0-9a-f]{40}", upstream_commit):
         raise ValueError("Expected an exact upstream commit SHA")
-    day = started.astimezone(ZoneInfo("Asia/Shanghai")).strftime("%Y%m%d")
+    local_date = started.astimezone(ZoneInfo("Asia/Shanghai"))
+    day = local_date.strftime("%Y%m%d")
     version = f"{day}.{run_id}.{attempt}"
     url = update_url(repository)
     makefile = source / "Makefile"
     comfile = source / "luasrc/passwall2/com.lua"
     apifile = source / "luasrc/passwall2/api.lua"
+    viewfile = source / "luasrc/view/passwall2/app_update/app_version.htm"
     make, com, api = makefile.read_text(), comfile.read_text(), apifile.read_text()
     if not re.search(r"^LUCI_PKGARCH\s*:?=\s*all\s*$", make, re.MULTILINE):
         raise ValueError("PassWall2 is no longer a universal LuCI package")
@@ -54,6 +56,12 @@ def prepare(source, repository, created_at, run_id, attempt, upstream_commit, ou
     if not upstream_version:
         raise ValueError("Upstream version is missing")
     upstream_version = upstream_version[1]
+    upstream_release = re.search(r"^PKG_RELEASE\s*:?=\s*(\d+)\s*$", make, re.MULTILINE)
+    if not re.fullmatch(r"\d+\.\d+\.\d+", upstream_version) or not upstream_release:
+        raise ValueError("Unrecognized upstream version/revision")
+    upstream_version += "-" + upstream_release[1]
+    build_date = f"{local_date.year % 100}.{local_date.month}.{local_date.day}"
+    display_version = f"{build_date}-{build_number}({upstream_version})"
     make = replace_once(make, r"^PKG_VERSION\s*:?=.*$", f"PKG_VERSION:={version}")
     make = replace_once(make, r"^PKG_RELEASE\s*:?=.*$", "PKG_RELEASE:=1")
     make = replace_once(make, r"^PKG_PO_VERSION\s*:?=.*$", "PKG_PO_VERSION:=$(PKG_VERSION)")
@@ -62,16 +70,44 @@ def prepare(source, repository, created_at, run_id, attempt, upstream_commit, ou
         '_M.passwall2 = {\n\tname = "PassWall2",\n\tget_url = function(self)\n'
         f'\t\treturn "{url}"\n\tend\n}}',
     )
+    # Keep get_version() and update comparisons numeric for existing installations.
+    # Only UI-facing fields use the compact label stored inside this exact package.
+    display_function = '''function get_display_version()
+	local version = get_version()
+	local info = jsonc.parse(fs.readfile("/usr/share/passwall2/build-info.json") or "{}")
+	if type(info) == "table" and info.version == version and type(info.display_version) == "string" then
+		return info.display_version
+	end
+	return version
+end
+
+'''
+    api = replace_once(api, r"^local function self_update_languages\(\)",
+                       display_function + "local function self_update_languages()")
+    api = replace_once(
+        api, r"^\t\tlocal_version = local_version, remote_version = remote_version, html_url = release.html_url,$",
+        "\t\tlocal_version = get_display_version(), remote_version = release.display_version or remote_version, html_url = release.html_url,",
+    )
+    view = viewfile.read_text()
+    if view.count("api.get_version()") != 1:
+        raise ValueError("Upstream version display template changed")
+    view = view.replace("api.get_version()", "api.get_display_version()")
     metadata = {
         "repository": repository, "version": version, "tag_name": f"{version}-1",
         "package_version": f"{version}-r1", "update_url": url,
         "upstream_version": upstream_version,
+        "display_version": display_version, "build_date": build_date, "build_number": build_number,
         "upstream_commit": upstream_commit,
         "run_id": run_id, "run_attempt": attempt, "created_at": created_at,
     }
     # Validate every transformation before touching the feed.
     makefile.write_text(make)
     comfile.write_text(com)
+    apifile.write_text(api)
+    viewfile.write_text(view)
+    infofile = source / "root/usr/share/passwall2/build-info.json"
+    infofile.write_text(json.dumps({"version": metadata["tag_name"],
+                                   "display_version": display_version}, indent=2) + "\n")
     output.write_text(json.dumps(metadata, indent=2) + "\n")
     print(f"Prepared PassWall2 {metadata['package_version']} -> {url}")
 
@@ -111,6 +147,9 @@ def collect(build, metadata_file, destination):
                 packed = Path(tmp) / "usr/lib/lua/luci/passwall2/com.lua"
                 if meta["update_url"] not in packed.read_text():
                     raise ValueError("Built APK does not contain the repository update URL")
+                info = json.loads((Path(tmp) / "usr/share/passwall2/build-info.json").read_text())
+                if info != {"version": meta["tag_name"], "display_version": meta["display_version"]}:
+                    raise ValueError("Built APK contains incorrect display version metadata")
         selected.append((package, next(iter(digests))))
     destination.mkdir(parents=True, exist_ok=True)
     for package, digest in selected:
@@ -133,6 +172,7 @@ def main():
     patch.add_argument("--created-at", required=True)
     patch.add_argument("--run-id", type=int, required=True)
     patch.add_argument("--attempt", type=int, required=True)
+    patch.add_argument("--build-number", type=int, required=True)
     patch.add_argument("--upstream-commit", required=True)
     patch.add_argument("--output", type=Path, required=True)
     gather = subs.add_parser("collect")
@@ -142,7 +182,7 @@ def main():
     args = parser.parse_args()
     if args.command == "prepare":
         prepare(args.source, args.repository, args.created_at, args.run_id, args.attempt,
-                args.upstream_commit, args.output)
+                args.upstream_commit, args.output, args.build_number)
     else:
         collect(args.build.resolve(), args.metadata, args.destination)
 

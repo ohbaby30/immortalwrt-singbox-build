@@ -62,6 +62,7 @@ jobs:
             if (ordinal < 1) {
               throw new Error(`Current workflow run ${context.runId} has no daily ordinal.`);
             }
+            core.setOutput('build_number', ordinal);
             core.setOutput('release_suffix', ordinal === 1 ? buildDate : `${buildDate}-${ordinal}`);
 
       - name: Free disk space
@@ -107,6 +108,7 @@ jobs:
       - name: Prepare repository PassWall2 updates
         env:
           BUILD_CREATED_AT: ${{ steps.release-suffix.outputs.created_at }}
+          BUILD_NUMBER: ${{ steps.release-suffix.outputs.build_number }}
         run: |
           python3 scripts/passwall2-update.py prepare \
             --source immortalwrt/feeds/passwall2/luci-app-passwall2 \
@@ -114,6 +116,7 @@ jobs:
             --created-at "$BUILD_CREATED_AT" \
             --run-id "$GITHUB_RUN_ID" \
             --attempt "$GITHUB_RUN_ATTEMPT" \
+            --build-number "$BUILD_NUMBER" \
             --upstream-commit "$(git -C immortalwrt/feeds/passwall2 rev-parse HEAD)" \
             --output passwall2-build.json
 

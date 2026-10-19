@@ -87,6 +87,9 @@ async function publish({github, context, core, directory = 'artifact'}) {
   const repository = `${repo.owner}/${repo.repo}`;
   const meta = JSON.parse(fs.readFileSync(path.join(directory, 'passwall2-build.json'), 'utf8'));
   compareVersions(meta.tag_name, meta.tag_name);
+  if (!/^\d{2}\.\d{1,2}\.\d{1,2}-[1-9]\d*\(\d+\.\d+\.\d+-\d+\)$/.test(meta.display_version || '')) {
+    throw new Error('Invalid display version');
+  }
   if (meta.repository !== repository || meta.tag_name !== `${meta.version}-1` ||
       meta.package_version !== `${meta.version}-r1` || !Array.isArray(meta.assets) || meta.assets.length !== 2) {
     throw new Error('Invalid build metadata');
@@ -115,7 +118,7 @@ async function publish({github, context, core, directory = 'artifact'}) {
   } catch (error) {
     if (error.status !== 404) throw error;
     release = (await github.rest.repos.createRelease({...repo, tag_name: tag,
-      target_commitish: context.sha, name: `PassWall2 ${meta.tag_name} (universal APK)`,
+      target_commitish: context.sha, name: `PassWall2 ${meta.display_version}`,
       body: `Built from ${repository}, Actions run ${meta.run_id}, attempt ${meta.run_attempt}.\n` +
         `Upstream source: ${meta.upstream_commit}\nUpstream version: ${meta.upstream_version}\n` +
         'Universal LuCI APK and Simplified Chinese translation. Firmware is published separately.',
@@ -158,7 +161,7 @@ async function publish({github, context, core, directory = 'artifact'}) {
     }
     return {name: asset.name, size: asset.size, digest: asset.digest, browser_download_url: url};
   });
-  const manifest = {tag_name: meta.tag_name, html_url: release.html_url, assets,
+  const manifest = {tag_name: meta.tag_name, display_version: meta.display_version, html_url: release.html_url, assets,
     build: {repository, run_id: meta.run_id, run_attempt: meta.run_attempt,
       upstream_commit: meta.upstream_commit, upstream_version: meta.upstream_version}};
   await advancePointer(github, repo, manifest, core);

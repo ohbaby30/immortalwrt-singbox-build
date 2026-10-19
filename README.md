@@ -45,6 +45,8 @@ passwd root
 
 本仓库固件中的 PassWall2 点击“更新”或“强制更新”时，下载并安装的是本仓库编译发布的 APK 和对应中文包，不使用官方仓库的 APK。
 
+版本显示为“构建日期-当天构建序号(官方版本)”，例如 `26.10.19-1(26.10.1-2)`。
+
 ## 🙏特别感谢
 
 本项目源自于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 和 [PassWall2](https://github.com/Openwrt-Passwall/openwrt-passwall2)。
