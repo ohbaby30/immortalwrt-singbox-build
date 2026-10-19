@@ -46,6 +46,7 @@ jobs:
             if (!currentRun) {
               throw new Error(`Current workflow run ${context.runId} was not found.`);
             }
+            core.setOutput('created_at', currentRun.created_at);
             const formatter = new Intl.DateTimeFormat('en-CA', {
               timeZone: 'Asia/Shanghai',
               year: 'numeric',
@@ -102,6 +103,19 @@ jobs:
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
+      - name: Prepare repository PassWall2 updates
+        env:
+          BUILD_CREATED_AT: ${{ steps.release-suffix.outputs.created_at }}
+        run: |
+          python3 scripts/passwall2-update.py prepare \
+            --source immortalwrt/feeds/passwall2/luci-app-passwall2 \
+            --repository "$GITHUB_REPOSITORY" \
+            --created-at "$BUILD_CREATED_AT" \
+            --run-id "$GITHUB_RUN_ID" \
+            --attempt "$GITHUB_RUN_ATTEMPT" \
+            --upstream-commit "$(git -C immortalwrt/feeds/passwall2 rev-parse HEAD)" \
+            --output passwall2-build.json
 
       - name: Load custom files
         run: |
@@ -169,11 +183,10 @@ jobs:
         run: |
           mkdir -p artifact
           cp -v immortalwrt/bin/targets/x86/64/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz artifact/
-          find immortalwrt/bin/packages immortalwrt/bin/targets -type f -name '*passwall2*.apk' -exec cp -v {} artifact/ \;
-          if ! ls artifact/*passwall2*.apk >/dev/null 2>&1; then
-            echo "passwall2 apk files not found"
-            exit 1
-          fi
+          python3 scripts/passwall2-update.py collect \
+            --build immortalwrt \
+            --metadata passwall2-build.json \
+            --destination artifact
           cd artifact && sha256sum * > SHA256SUMS && cd ..
 
       - name: Upload firmware to release
@@ -188,6 +201,14 @@ jobs:
             artifact/SHA256SUMS
           fail_on_unmatched_files: true
           make_latest: true
+
+      - name: Publish common PassWall2 update source
+        if: success() && (inputs.branch == '' || inputs.branch == 'master') && (inputs.config == '' || inputs.config == 'configs/x86_64.config')
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const {publish} = require('./scripts/publish-passwall2.cjs');
+            await publish({github, context, core});
 
       - name: Delete old x86_64 SingBox releases
         uses: actions/github-script@v8
@@ -234,5 +255,6 @@ jobs:
             artifact/immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz
             artifact/*passwall2*.apk
             artifact/SHA256SUMS
+            artifact/passwall2-build.json
           if-no-files-found: warn
           retention-days: 7

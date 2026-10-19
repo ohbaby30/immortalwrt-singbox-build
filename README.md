@@ -42,6 +42,10 @@ passwd root
 - Passwall2 的 `.apk` 安装包
 - `SHA256SUMS` 校验和文件，用于验证下载完整性
 
+## PassWall2 在线更新
+
+本仓库固件中的 PassWall2 点击“更新”或“强制更新”时，下载并安装的是本仓库编译发布的 APK 和对应中文包，不使用官方仓库的 APK。
+
 ## 🙏特别感谢
 
 本项目源自于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 和 [PassWall2](https://github.com/Openwrt-Passwall/openwrt-passwall2)。
