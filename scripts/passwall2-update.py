@@ -61,7 +61,7 @@ def prepare(source, repository, created_at, run_id, attempt, upstream_commit, ou
         raise ValueError("Unrecognized upstream version/revision")
     upstream_version += "-" + upstream_release[1]
     build_date = f"{local_date.year % 100}.{local_date.month}.{local_date.day}"
-    display_version = f"{build_date}-{build_number}({upstream_version})"
+    display_version = f"{build_date}-{build_number} · 上游 {upstream_version}"
     make = replace_once(make, r"^PKG_VERSION\s*:?=.*$", f"PKG_VERSION:={version}")
     make = replace_once(make, r"^PKG_RELEASE\s*:?=.*$", "PKG_RELEASE:=1")
     make = replace_once(make, r"^PKG_PO_VERSION\s*:?=.*$", "PKG_PO_VERSION:=$(PKG_VERSION)")

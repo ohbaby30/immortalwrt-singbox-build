@@ -87,7 +87,7 @@ async function publish({github, context, core, directory = 'artifact'}) {
   const repository = `${repo.owner}/${repo.repo}`;
   const meta = JSON.parse(fs.readFileSync(path.join(directory, 'passwall2-build.json'), 'utf8'));
   compareVersions(meta.tag_name, meta.tag_name);
-  if (!/^\d{2}\.\d{1,2}\.\d{1,2}-[1-9]\d*\(\d+\.\d+\.\d+-\d+\)$/.test(meta.display_version || '')) {
+  if (!/^\d{2}\.\d{1,2}\.\d{1,2}-[1-9]\d* · 上游 \d+\.\d+\.\d+-\d+$/.test(meta.display_version || '')) {
     throw new Error('Invalid display version');
   }
   if (meta.repository !== repository || meta.tag_name !== `${meta.version}-1` ||
