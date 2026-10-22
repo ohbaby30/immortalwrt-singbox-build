@@ -91,7 +91,15 @@ end
     view = viewfile.read_text()
     if view.count("api.get_version()") != 1:
         raise ValueError("Upstream version display template changed")
-    view = view.replace("api.get_version()", "api.get_display_version()")
+    # Keep metadata plain text; color only the upstream suffix in the local UI.
+    view = replace_once(view, r"^local com = self.com$", '''local com = self.com
+local display_version = api.get_display_version()
+local build_version, upstream_version = display_version:match("^(.-) · (上游 %d+%.%d+%.%d+%-%d+)$")
+local version_html = luci.util.pcdata(display_version)
+if build_version then
+    version_html = luci.util.pcdata(build_version) .. ' · <span style="color: red">' .. luci.util.pcdata(upstream_version) .. '</span>'
+end''')
+    view = view.replace("api.get_version()", "version_html")
     metadata = {
         "repository": repository, "version": version, "tag_name": f"{version}-1",
         "package_version": f"{version}-r1", "update_url": url,
