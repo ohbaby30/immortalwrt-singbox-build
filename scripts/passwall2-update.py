@@ -97,7 +97,13 @@ local display_version = api.get_display_version()
 local build_version, upstream_version = display_version:match("^(.-) · (上游 %d+%.%d+%.%d+%-%d+)$")
 local version_html = luci.util.pcdata(display_version)
 if build_version then
-    version_html = luci.util.pcdata(build_version) .. ' · <span style="color: red">' .. luci.util.pcdata(upstream_version) .. '</span>'
+    local month_colors = {
+        "#ED174C", "#E000A3", "#803DE8", "#008F68",
+        "#548E00", "#008DA8", "#0068ED", "#4140E8",
+        "#AA7900", "#E65400", "#BF4126", "#AB22CE"
+    }
+    local color = month_colors[tonumber(os.date("%m"))] or "#ED174C"
+    version_html = luci.util.pcdata(build_version) .. ' · <span style="color: ' .. color .. '">' .. luci.util.pcdata(upstream_version) .. '</span>'
 end''')
     view = view.replace("api.get_version()", "version_html")
     metadata = {
