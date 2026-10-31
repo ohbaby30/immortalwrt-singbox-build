@@ -1,26 +1,26 @@
 {
-  "tag_name": "20261025.40129549678.1-1",
-  "display_version": "26.10.25-1 · 上游 26.10.20-1",
-  "html_url": "https://github.com/ohbaby30/immortalwrt-singbox-build/releases/tag/passwall2-20261025.40129549678.1-1",
+  "tag_name": "20261101.41242104646.1-1",
+  "display_version": "26.11.1-1 · 上游 26.10.29-1",
+  "html_url": "https://github.com/ohbaby30/immortalwrt-singbox-build/releases/tag/passwall2-20261101.41242104646.1-1",
   "assets": [
     {
-      "name": "luci-app-passwall2-20261025.40129549678.1-r1.apk",
-      "size": 366193,
-      "digest": "sha256:14a3171f1d411b6cda4f4e550574ef37eb47e551e699b5561318c4c031976a15",
-      "browser_download_url": "https://github.com/ohbaby30/immortalwrt-singbox-build/releases/download/passwall2-20261025.40129549678.1-1/luci-app-passwall2-20261025.40129549678.1-r1.apk"
+      "name": "luci-app-passwall2-20261101.41242104646.1-r1.apk",
+      "size": 367531,
+      "digest": "sha256:205ff8c39378fd93913ac560802779c4f6702a39510cb9be82928317d8767a69",
+      "browser_download_url": "https://github.com/ohbaby30/immortalwrt-singbox-build/releases/download/passwall2-20261101.41242104646.1-1/luci-app-passwall2-20261101.41242104646.1-r1.apk"
     },
     {
-      "name": "luci-i18n-passwall2-zh-cn-20261025.40129549678.1.apk",
-      "size": 21231,
-      "digest": "sha256:7f201d6da3ed01ab86869ad47daaa15962792b870c1da47becf77b69988b9272",
-      "browser_download_url": "https://github.com/ohbaby30/immortalwrt-singbox-build/releases/download/passwall2-20261025.40129549678.1-1/luci-i18n-passwall2-zh-cn-20261025.40129549678.1.apk"
+      "name": "luci-i18n-passwall2-zh-cn-20261101.41242104646.1.apk",
+      "size": 21257,
+      "digest": "sha256:fbf7f33cbf4d189570356a72468ba8a31ac0f37694ccd47f38856eaf5dde3aad",
+      "browser_download_url": "https://github.com/ohbaby30/immortalwrt-singbox-build/releases/download/passwall2-20261101.41242104646.1-1/luci-i18n-passwall2-zh-cn-20261101.41242104646.1.apk"
     }
   ],
   "build": {
     "repository": "ohbaby30/immortalwrt-singbox-build",
-    "run_id": 40129549678,
+    "run_id": 41242104646,
     "run_attempt": 1,
-    "upstream_commit": "b68b3a03caf76065bf012f92f9514f07bb1c3f9b",
-    "upstream_version": "26.10.20-1"
+    "upstream_commit": "d08e7f88fcb5c7f94b870f7281db0045a0477293",
+    "upstream_version": "26.10.29-1"
   }
 }
