@@ -93,9 +93,10 @@ end
         raise ValueError("Upstream version display template changed")
     # Keep metadata plain text; color only the upstream suffix in the local UI.
     view = replace_once(view, r"^local com = self.com$", '''local com = self.com
+local xml = require "luci.xml"
 local display_version = api.get_display_version()
 local build_version, upstream_version = display_version:match("^(.-) · (上游 %d+%.%d+%.%d+%-%d+)$")
-local version_html = luci.util.pcdata(display_version)
+local version_html = xml.pcdata(display_version)
 if build_version then
     local month_colors = {
         "#ED174C", "#E000A3", "#803DE8", "#008F68",
@@ -103,7 +104,7 @@ if build_version then
         "#AA7900", "#E65400", "#BF4126", "#AB22CE"
     }
     local color = month_colors[tonumber(os.date("%m"))] or "#ED174C"
-    version_html = luci.util.pcdata(build_version) .. ' · <span style="color: ' .. color .. '">' .. luci.util.pcdata(upstream_version) .. '</span>'
+    version_html = xml.pcdata(build_version) .. ' · <span style="color: ' .. color .. '">' .. xml.pcdata(upstream_version) .. '</span>'
 end''')
     view = view.replace("api.get_version()", "version_html")
     metadata = {
